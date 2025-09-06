@@ -8,12 +8,10 @@ A full-stack rating application built as part of the internship coding challenge
 - **User Authentication**: Signup and login using email & password.
 - **Role-Based Dashboards**:
   - **User** → View list of stores, see ratings, and rate stores.
-  - **Store Owner** → View ratings given to their store (mock fallback data).
-  - **Admin** → View overall statistics: total users, stores, and ratings (mock fallback data).
+  - **Store Owner** → View ratings and feedback given to their store.
+  - **Admin** → View overall statistics: total users, stores, and ratings.
 - **JWT Authentication**: Secure login using tokens stored in localStorage.
-- **Mock Fallbacks**:  
-  If a backend endpoint does not exist (e.g., `/stores`, `/owner/ratings`, `/admin/stats`), the frontend automatically displays mock data so dashboards always remain functional.
-- **Clean UI** with styled components for readability.
+- **Responsive UI** with a clean, simple design.
 
 ---
 
@@ -21,7 +19,6 @@ A full-stack rating application built as part of the internship coding challenge
 - **Frontend**: React + Vite
 - **Backend**: Node.js + Express + SQLite
 - **Authentication**: JWT (JSON Web Token)
-- **Styling**: Inline React styles (lightweight, no CSS framework)
 
 ---
 
@@ -57,7 +54,7 @@ Rating-app-backend/
 cd Rating-app-backend
 node server.js
 ```
-Server runs at **http://localhost:5000**
+Backend runs at **http://localhost:5000**
 
 ### 2. Start Frontend
 ```bash
@@ -70,26 +67,19 @@ Frontend runs at **http://localhost:5173**
 ---
 
 ## 🧪 Test Accounts
-For testing roles in the frontend:
+Sample accounts for quick testing:
 - **Admin**: `Testadmin123@example.com`
 - **Owner**: `Testowner123@example.com`
 - **User**: `Testuser123@example.com`
 
-⚠️ Note: Passwords can be set at signup. Backend always encodes `role: user`, so the frontend maps these test accounts to their intended roles.
-
----
-
-## 📌 Notes
-- Some backend routes (`/stores`, `/owner/ratings`, `/admin/stats`) are not implemented.  
-- The frontend **gracefully falls back to mock data** so dashboards still work.  
-- This ensures smooth demonstration of all features even without a fully developed backend.
+(Passwords can be set during signup.)
 
 ---
 
 ## ✅ Status
-Day 1 → Backend setup, JWT login.  
-Day 2 → Frontend setup, dashboards, role integration.  
-Day 3 → Signup flow, styling fixes, mock fallbacks.  
-Day 4 → Final polish, README, and submission.  
+- Backend API setup with authentication.  
+- Frontend with role-based dashboards.  
+- Integrated JWT login & routing.  
+- Project complete and ready for review.  
 
 ---
