@@ -1,124 +1,101 @@
 // src/pages/StoreOwnerDashboard.jsx
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
-const MOCK_RATINGS = [
-  { id: "r1", user: "Aisha", rating: 5, comment: "Excellent service!" },
-  { id: "r2", user: "Bilal", rating: 4, comment: "Good experience overall." },
-];
-
 export default function StoreOwnerDashboard() {
-  const [ratings, setRatings] = useState(MOCK_RATINGS);
-  const [avg, setAvg] = useState(
-    (MOCK_RATINGS.reduce((s, r) => s + r.rating, 0) / MOCK_RATINGS.length).toFixed(2)
-  );
-  const [endpointUsed, setEndpointUsed] = useState(null);
+  const [ratings, setRatings] = useState([]);
+  const [avg, setAvg] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const logout = () => {
+  const loadRatings = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/owner/ratings");
+      if (res.data && res.data.ratings) {
+        setRatings(res.data.ratings);
+        setAvg(res.data.average ?? (res.data.ratings.reduce((s, r) => s + (r.score || 0), 0) / Math.max(1, res.data.ratings.length)));
+      } else {
+        throw new Error("Unexpected response");
+      }
+    } catch (err) {
+      console.warn("Using mock ratings (no backend endpoint found).");
+      const mock = [
+        { id: 1, user: "Aisha", score: 5, comment: "Excellent service!" },
+        { id: 2, user: "Bilal", score: 4, comment: "Good experience overall." },
+      ];
+      setRatings(mock);
+      setAvg(mock.reduce((s, r) => s + r.score, 0) / mock.length);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRatings();
+  }, []);
+
+  const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     navigate("/login");
   };
 
-  useEffect(() => {
-    let mounted = true;
-
-    const tryFetch = async () => {
-      setLoading(true);
-      const endpoints = [
-        "/owner/ratings",
-        "/api/owner/ratings",
-        "/stores/ratings",
-        "/api/stores/ratings",
-      ];
-      for (const ep of endpoints) {
-        try {
-          const res = await api.get(ep);
-          if (!mounted) return;
-          const data = Array.isArray(res.data)
-            ? res.data
-            : res.data?.ratings ?? res.data?.data ?? [];
-
-          if (data.length > 0) {
-            setRatings(data);
-            setAvg(
-              (
-                data.reduce((s, r) => s + (r.rating || 0), 0) / data.length
-              ).toFixed(2)
-            );
-            setEndpointUsed(ep);
-            setLoading(false);
-            return;
-          }
-        } catch (err) {
-          console.warn("StoreOwner endpoint failed:", ep, err?.response?.status ?? err.message);
-        }
-      }
-
-      // fallback mock data
-      if (mounted) {
-        setRatings(MOCK_RATINGS);
-        setAvg(
-          (MOCK_RATINGS.reduce((s, r) => s + r.rating, 0) / MOCK_RATINGS.length).toFixed(2)
-        );
-        setEndpointUsed(null);
-        setLoading(false);
-      }
-    };
-
-    tryFetch();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  if (loading) {
+    return (
+      <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
+        <p>Loading owner ratings...</p>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h2>Store Owner Dashboard</h2>
-        <div>
-          <button onClick={logout} style={{ padding: "6px 10px" }}>Logout</button>
-        </div>
+    <div style={{ padding: 20, fontFamily: "Arial, sans-serif", background: "#f4f6f9", minHeight: "100vh" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <h2 style={{ margin: 0 }}>Store Owner Dashboard</h2>
+        <button
+          onClick={handleLogout}
+          style={{
+            background: "#e74c3c",
+            color: "#fff",
+            border: "none",
+            padding: "8px 12px",
+            borderRadius: 6,
+            cursor: "pointer",
+          }}
+        >
+          Logout
+        </button>
       </div>
 
-      <div style={{ marginTop: 12 }}>
-        {loading ? (
-          <div>Loading ratings…</div>
-        ) : endpointUsed ? (
-          <div>Loaded from endpoint: <strong>{endpointUsed}</strong></div>
-        ) : (
-          <div style={{ color: "#666" }}>Using mock ratings (no backend endpoint found).</div>
-        )}
+      <div style={{ padding: 14, border: "1px solid #dcdcdc", borderRadius: 8, background: "#fff", color: "#111" }}>
+        <h3>Average Rating</h3>
+        <div style={{ fontSize: 22, fontWeight: 700 }}>{avg ? Number(avg).toFixed(2) : "-"}</div>
       </div>
 
-      <div style={{ marginTop: 12 }}>
-        <div style={{ fontWeight: 600 }}>Average Rating: {avg}</div>
-        <div style={{ marginTop: 12 }}>
-          {ratings.length === 0 ? (
-            <div>No ratings yet.</div>
-          ) : (
-            ratings.map((r) => (
-              <div
-                key={r.id}
-                style={{
-                  border: "1px solid #ddd",
-                  padding: 10,
-                  marginBottom: 10,
-                  borderRadius: 6,
-                }}
-              >
+      <h3 style={{ marginTop: 18 }}>Ratings</h3>
+      {ratings.length === 0 ? (
+        <p>No ratings yet.</p>
+      ) : (
+        <div style={{ display: "grid", gap: 12, marginTop: 8 }}>
+          {ratings.map((r) => (
+            <div key={r.id} style={{ padding: 12, border: "1px solid #dcdcdc", borderRadius: 8, background: "#fff", color: "#111" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <strong>{r.user}</strong> — {r.rating}/5
+                  <strong>{r.user}</strong>
+                  <div style={{ color: "#555", fontSize: 13 }}>{r.comment}</div>
                 </div>
-                <div style={{ color: "#555", marginTop: 6 }}>{r.comment}</div>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>{r.score}/5</div>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
-      </div>
+      )}
+
+      <p style={{ marginTop: 16, color: "#666", fontSize: 13 }}>
+        Note: If no backend endpoint exists for owner ratings, mock data is shown for demo purposes.
+      </p>
     </div>
   );
 }
