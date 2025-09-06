@@ -1,93 +1,142 @@
 // src/pages/UserDashboard.jsx
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
-const LIKELY_ENDPOINTS = [
-  "/stores",
-  "/api/stores",
-  "/stores/all",
-  "/store",
-  "/api/store",
-  "/stores/list",
-];
-
-const MOCK_STORES = [
-  { id: "m1", name: "Demo Coffee", address: "123 Demo St", avgRating: 4.2 },
-  { id: "m2", name: "Sample Bakery", address: "45 Sample Ave", avgRating: 3.9 },
-];
-
 export default function UserDashboard() {
   const [stores, setStores] = useState([]);
-  const [endpointUsed, setEndpointUsed] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState(null);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("");
   const navigate = useNavigate();
 
-  const logout = () => {
+  const loadStores = async () => {
+    try {
+      const res = await api.get("/stores");
+      setStores(res.data);
+    } catch (err) {
+      console.warn("Could not find backend /stores endpoint. Using mock data.");
+      setStores([
+        { id: 1, name: "Demo Coffee", address: "123 Demo St", averageRating: 4.2 },
+        { id: 2, name: "Sample Bakery", address: "45 Sample Ave", averageRating: 3.9 },
+      ]);
+    }
+  };
+
+  useEffect(() => {
+    loadStores();
+  }, []);
+
+  const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     navigate("/login");
   };
 
-  useEffect(() => {
-    let mounted = true;
+  const handleRate = (storeId, rating) => {
+    setStores((prev) =>
+      prev.map((s) =>
+        s.id === storeId
+          ? {
+              ...s,
+              averageRating: ((s.averageRating + rating) / 2).toFixed(1),
+            }
+          : s
+      )
+    );
+  };
 
-    const tryEndpoints = async () => {
-      setLoading(true);
-      setErrorMsg(null);
-      for (const ep of LIKELY_ENDPOINTS) {
-        try {
-          const res = await api.get(ep);
-          const data = Array.isArray(res.data) ? res.data : res.data?.stores ?? res.data?.data ?? res.data;
-          if (mounted && data) {
-            setStores(data);
-            setEndpointUsed(ep);
-            setLoading(false);
-            console.log("Stores loaded from", ep, res.data);
-            return;
-          }
-        } catch (err) {
-          console.warn(`Endpoint ${ep} failed:`, err?.response?.status, err?.response?.data ?? err.message);
-          continue;
-        }
-      }
+  let filteredStores = stores.filter(
+    (s) =>
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.address.toLowerCase().includes(search.toLowerCase())
+  );
 
-      // fallback to mock data
-      if (mounted) {
-        setStores(MOCK_STORES);
-        setErrorMsg("Could not find backend /stores endpoint. Using mock data.");
-        setLoading(false);
-        setEndpointUsed(null);
-      }
-    };
-
-    tryEndpoints();
-
-    return () => { mounted = false; };
-  }, []);
+  if (sort === "high") {
+    filteredStores = [...filteredStores].sort((a, b) => b.averageRating - a.averageRating);
+  } else if (sort === "low") {
+    filteredStores = [...filteredStores].sort((a, b) => a.averageRating - b.averageRating);
+  }
 
   return (
-    <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h2>User Dashboard</h2>
-        <div><button onClick={logout}>Logout</button></div>
+    <div style={{ padding: 20, fontFamily: "Arial, sans-serif", background: "#f4f6f9", minHeight: "100vh" }}>
+      <h2>User Dashboard</h2>
+      <button
+        onClick={handleLogout}
+        style={{
+          marginBottom: 20,
+          background: "#e74c3c",
+          color: "#fff",
+          border: "none",
+          padding: "8px 12px",
+          borderRadius: 6,
+          cursor: "pointer",
+        }}
+      >
+        Logout
+      </button>
+
+      <div style={{ marginBottom: 20 }}>
+        <input
+          type="text"
+          placeholder="Search by name or address"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            padding: 8,
+            borderRadius: 6,
+            border: "1px solid #ccc",
+            width: "60%",
+            marginRight: 10,
+          }}
+        />
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          style={{ padding: 8, borderRadius: 6, border: "1px solid #ccc" }}
+        >
+          <option value="">Sort by...</option>
+          <option value="high">Rating High → Low</option>
+          <option value="low">Rating Low → High</option>
+        </select>
       </div>
 
-      <div style={{ marginTop: 8, color: "#666" }}>
-        {loading ? <div>Loading stores…</div> : endpointUsed ? <div>Loaded from endpoint: <strong>{endpointUsed}</strong></div> : <div style={{ color: "#a00" }}>{errorMsg}</div>}
-      </div>
+      {filteredStores.map((store) => (
+        <div
+          key={store.id}
+          style={{
+            padding: 12,
+            border: "1px solid #ccc",
+            borderRadius: 8,
+            marginBottom: 12,
+            background: "#f9f9f9", // ✅ fixed background
+            color: "#222",         // ✅ dark text
+          }}
+        >
+          <h3 style={{ margin: "4px 0", fontWeight: "600" }}>{store.name}</h3>
+          <p style={{ margin: "2px 0" }}>{store.address}</p>
+          <p style={{ margin: "2px 0" }}>
+            <strong>Overall Rating:</strong> {store.averageRating}
+          </p>
 
-      <div style={{ marginTop: 16 }}>
-        {stores.length === 0 && !loading && <div>No stores available.</div>}
-        {stores.map((s) => (
-          <div key={s.id ?? s.name} style={{ border: "1px solid #ddd", padding: 10, marginBottom: 10 }}>
-            <div style={{ fontWeight: 600 }}>{s.name}</div>
-            <div style={{ color: "#555" }}>{s.address}</div>
-            <div>Overall Rating: {s.avgRating ?? s.average ?? "-"}</div>
-          </div>
-        ))}
-      </div>
+          <label style={{ display: "block", marginTop: 8 }}>
+            Rate this store:{" "}
+            <select
+              onChange={(e) => handleRate(store.id, parseFloat(e.target.value))}
+              defaultValue=""
+              style={{ marginLeft: 8, padding: 4 }}
+            >
+              <option value="" disabled>
+                Select rating
+              </option>
+              {[1, 2, 3, 4, 5].map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ))}
     </div>
   );
 }
